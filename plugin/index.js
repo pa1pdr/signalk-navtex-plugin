@@ -196,6 +196,7 @@ module.exports = function(app, options) {
     return schema
   }
 
+    var tty = null;
     plugin.start = function(options, restartPlugin) {
       var text = [];
       app.debug('starting plugin')
@@ -273,31 +274,37 @@ module.exports = function(app, options) {
 		    app.debug('No cache file found');
 		  }
 
-      // Setup TTY reader
+      // Setup TTY reader — wrapped in setTimeout for Windows COM port compatibility
       app.debug('Using TTY ' + options.tty + ' at ' + options.baudrate + ' baud')
-      const tty = new SerialPort({
-        path: options.tty,
-        baudRate: options.baudrate,
-        dataBits: 8,
-        stopBits: 1,
-        parity: 'none'
-      });
+      setTimeout(function() {
+        tty = new SerialPort({
+          path: options.tty,
+          baudRate: options.baudrate,
+          dataBits: 8,
+          stopBits: 1,
+          parity: 'none',
+          AutoOpen: false
+        });
 
-      if (options.nasaStore == true) {
-        // Try to retrieve stored messages on NASA NavTex
-        app.debug('Writing $S to retrieve NASA NavTex stored messages')
-        tty.write('$S\r\n', function(err) {
-          if (err) {
-            return app.debug('Error writing $S', err.message)
-          }
-        })
-      }
+        if (options.nasaStore == true) {
+          // Try to retrieve stored messages on NASA NavTex
+          app.debug('Writing $S to retrieve NASA NavTex stored messages')
+          tty.write('$S\r\n', function(err) {
+            if (err) {
+              return app.debug('Error writing $S', err.message)
+            }
+          })
+        }
 
-      const parser = tty.pipe(new ReadlineParser({ delimiter: '\r\n' }))
-      parser.on('data', function (data) {
-        data = data.toString().trim();
-        processLine(data);
-      });
+        tty.on('data', function(data) { app.debug('RAW: ' + JSON.stringify(data.toString())) })
+
+        const parser = tty.pipe(new ReadlineParser({ delimiter: '\r\n' }))
+        parser.on('data', function(data) {
+          data = data.toString().trim();
+          app.debug('Parsed: ' + JSON.stringify(data))
+          processLine(data);
+        });
+      }, 500);
 
       // Remove old entries every hour
       setInterval(removeOld, 60*60*1000); // every hour remove older messages
@@ -477,11 +484,13 @@ module.exports = function(app, options) {
     plugin.stop = function() {
       app.debug("Stopping")
       unsubscribes.forEach(f => f())
-      // keyPaths.length = keyPaths.length - 1
-
-      // clearInterval(pushInterval)
-
-      // app.signalk.removeListener("delta", handleDelta)
+      if (tty && tty.isOpen) {
+        tty.close(function(err) {
+          if (err) app.debug('Error closing port: ' + err.message)
+          else app.debug('Port closed')
+        })
+      }
+      tty = null
       app.debug("Stopped")
     }
 
