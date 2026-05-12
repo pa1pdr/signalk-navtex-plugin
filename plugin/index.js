@@ -320,28 +320,28 @@ module.exports = function(app, options) {
 			}
 			
 			function processLine(line) {
-			  // ZCZC/NASA format: "ZCZC B03" or ">" prefix
+			  // Standard ZCZC format: "ZCZC B03" or NASA NavTex ">" prefix
 			  if (line.match(/^ZCZC/i) || line.match(/^>/i)) {
 			    if (nextline == 'text') {
 			      app.debug('Missed footer apparently');
 			      processFooter();
 			    }
 			    nextline = 'header';
-			  // NAVTEX session header: "NAVTEX ====..."
+			  // ICS NAV6: session header e.g. "NAVTEX ==== 14/07/2025 10:30 UTC"
 			  } else if (line.match(/^NAVTEX\s*={3,}/i)) {
 			    if (nextline == 'text') {
 			      app.debug('Session boundary - closing message');
 			      processFooter();
 			    }
 			    nextline = '';
-			  // XYNN message header: "PB02 518 kHz ..." (stationId + msgtype + 2-digit seq)
+			  // ICS NAV6: message header e.g. "PB02 518 kHz Netherlands Cg 0%" (X=stationId, Y=msgtype, NN=seq)
 			  } else if (line.match(/^[A-Z]{2}\d{2}(\s|$)/)) {
 			    if (nextline == 'text') {
 			      app.debug('New XYNN header - closing previous message');
 			      processFooter();
 			    }
 			    nextline = 'xynn';
-			  // NNNN/NASA format footer
+			  // Standard NNNN footer or NASA NavTex "<" suffix
 			  } else if (line.match(/^NNNN/i) || line.match(/^</i)) {
 			    nextline = 'footer';
 			  }
@@ -359,7 +359,7 @@ module.exports = function(app, options) {
 			      break;
 
 			    case 'xynn':
-			      app.debug('header: Seeing XYNN message header');
+			      app.debug('header: Seeing ICS NAV6 XYNN message header');
 			      message.id = msgid;
 			      message.epoch = Date.now();
 			      message.stationId = line.slice(0, 1);

@@ -6,10 +6,18 @@ The plugin expects a NavTex feed on a serial port, which can be configured in th
 ## NavTex support
 
 ### ZCZC
-The normal ZCZC header type messages are supported
+The normal ZCZC header type messages are supported.
 
 ### NASA NavTex
-NASA uses > and < as header and footer. This is supported as well.
+NASA uses `>` and `<` as header and footer. This is supported as well.
+
+### ICS NAV6
+The ICS NAV6 receiver omits ZCZC/NNNN and uses a different format:
+- Session header: `NAVTEX ====... DD/MM/YYYY HH:MM UTC`
+- Message header: `XYNN freq kHz station Cg n%` (e.g. `PB02 518 kHz Netherlands Cg 0%`)
+  where X = station ID, Y = message type, NN = sequence number
+- Message body lines terminated by a blank line
+- Messages are implicitly closed when the next message or session header arrives
 
 ## Features
  - Station and per station message type selection through plugin config
