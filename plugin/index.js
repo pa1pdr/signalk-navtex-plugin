@@ -320,44 +320,58 @@ module.exports = function(app, options) {
 			}
 			
 			function processLine(line) {
+			  // ZCZC/NASA format: "ZCZC B03" or ">" prefix
 			  if (line.match(/^ZCZC/i) || line.match(/^>/i)) {
 			    if (nextline == 'text') {
-			      app.debug ('Missed footer apparently');
+			      app.debug('Missed footer apparently');
 			      processFooter();
 			    }
 			    nextline = 'header';
-			  } else {
-			    if (line.match(/^NNNN/i) || line.match(/^</i)) {
-			      nextline = 'footer';
+			  // NAVTEX session header: "NAVTEX ====..."
+			  } else if (line.match(/^NAVTEX\s*={3,}/i)) {
+			    if (nextline == 'text') {
+			      app.debug('Session boundary - closing message');
+			      processFooter();
 			    }
+			    nextline = '';
+			  // XYNN message header: "PB02 518 kHz ..." (stationId + msgtype + 2-digit seq)
+			  } else if (line.match(/^[A-Z]{2}\d{2}(\s|$)/)) {
+			    if (nextline == 'text') {
+			      app.debug('New XYNN header - closing previous message');
+			      processFooter();
+			    }
+			    nextline = 'xynn';
+			  // NNNN/NASA format footer
+			  } else if (line.match(/^NNNN/i) || line.match(/^</i)) {
+			    nextline = 'footer';
 			  }
-			
+
 			  switch(nextline) {
 			    case 'header':
 			      app.debug('header: Seeing new ZCZC');
-            let offset = 5
-            if (line.match(/^>/i)) {
-			        app.debug('Seeing NASA style new message header >')
-              offset = 1
-            }
+			      const offset = line.match(/^>/i) ? 1 : 5;
 			      message.id = msgid;
 			      message.epoch = Date.now();
-			      // var dt = dateTime.create();
-			      // var dateString = new Date(dt.now());
-			      // var formatted = dt.format('HhM n d');
-			      // var dateString = new String(formatted);
-			      // message.datetime = dateString.split("(")[0];
-			      message.stationId = line.slice(offset,offset+1);
-			      message.msgtype = line.slice(offset+1,offset+2);
+			      message.stationId = line.slice(offset, offset+1);
+			      message.msgtype = line.slice(offset+1, offset+2);
 			      message.msgtypenr = line.slice(offset+2);
-			      // debug('Message: ', JSON.stringify(message))
 			      nextline = 'text';
 			      break;
-			
+
+			    case 'xynn':
+			      app.debug('header: Seeing XYNN message header');
+			      message.id = msgid;
+			      message.epoch = Date.now();
+			      message.stationId = line.slice(0, 1);
+			      message.msgtype = line.slice(1, 2);
+			      message.msgtypenr = line.slice(2, 4);
+			      nextline = 'text';
+			      break;
+
 			    case 'text':
 			      text.push(line);
 			      break;
-			
+
 			    case 'footer':
 			      processFooter();
 			      break;
