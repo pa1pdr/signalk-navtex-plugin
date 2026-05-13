@@ -520,8 +520,12 @@ module.exports = function(app, options) {
       router.get("/stationlist", (req, res) => {
         var map = {};
         Object.values(stationList).forEach(s => {
+          var freq = s['Broadcast frequency (kHz)'];
           var id = s['NAVTEX CRS identifier'];
-          if (!map[id]) map[id] = s['NAVTEX CRS name'] + ' (' + s['Country'] + ')';
+          if (freq === 518 || freq === 490) {
+            var key = freq + ':' + id;
+            if (!map[key]) map[key] = s['NAVTEX CRS name'] + ' (' + s['Country'] + ')';
+          }
         });
         res.contentType("application/json")
         res.send(JSON.stringify(map))
