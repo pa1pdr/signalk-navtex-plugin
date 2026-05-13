@@ -168,9 +168,13 @@ const addContenttoDom = newMessage => {
   //console.log("New message: " + newMessage)
   const obj = JSON.parse(newMessage);
   const message = obj.updates[0].values[0];
-  const stationId = message.path.split('.')[2];
-  const messageType = message.path.split('.')[3];
-  const messageNr = message.path.split('.')[4];
+  var parts = message.path.split('.');
+  var freq, stationId, messageType, messageNr;
+  if (parts[2] === '490') {
+    freq = '490&nbsp;kHz'; stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
+  } else {
+    freq = '518&nbsp;kHz'; stationId = parts[2]; messageType = parts[3]; messageNr = parts[4];
+  }
   const epoch = message.value.epoch;
   if (messages.includes(epoch)) {
     // console.log('Ignore duplicate ' + epoch)
@@ -188,7 +192,7 @@ const addContenttoDom = newMessage => {
   const newHeaderEl = document.createElement("header");
   newHeaderEl.setAttribute("id","header");
   var stationLabel = stationNames[stationId] ? stationNames[stationId].replaceAll(' ', '&nbsp;') : stationId;
-  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;') + " issued&nbsp;by " + stationLabel;
+  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + freq + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;') + " issued&nbsp;by " + stationLabel;
   newMessageEl.appendChild(newHeaderEl);
   const newTextEl = document.createElement("text");
   newTextEl.setAttribute("id","text");

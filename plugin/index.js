@@ -63,7 +63,7 @@ module.exports = function(app, options) {
       },
 	    stations: {
 	      type: 'array',
-	      title: 'Select stations and message types',
+	      title: '518 kHz (international) - stations and message types',
 	      items: {
 	        type: 'object',
 	        properties: {
@@ -141,6 +141,42 @@ module.exports = function(app, options) {
 			    }
 			  }
       }
+    },
+    stations490: {
+      type: 'array',
+      title: '490 kHz (local) - stations and message types',
+      items: {
+        type: 'object',
+        properties: {
+          station: {
+            type: 'string',
+            title: 'Station',
+            default: 'ALL'
+          },
+          messageTypes: {
+            type: 'object',
+            title: 'Message types',
+            properties: {
+              0: { title: "All messages", type: 'boolean' },
+              A: { title: "Navigational warning", type: 'boolean' },
+              B: { title: "Meteorological warning", type: 'boolean' },
+              C: { title: "Ice report", type: 'boolean' },
+              D: { title: "Search and rescue information and pirate warning", type: 'boolean' },
+              E: { title: "Meteorological forecast", type: 'boolean' },
+              F: { title: "Pilot service message", type: 'boolean' },
+              G: { title: "AIS, DECCA message", type: 'boolean' },
+              H: { title: "LORAN message", type: 'boolean' },
+              J: { title: "SATNAV message (GPS, GLONASS)", type: 'boolean' },
+              K: { title: "Other electronic navaid system message", type: 'boolean' },
+              L: { title: "Navigational warning (additional)", type: 'boolean' },
+              V: { title: "Notice to fishermen (US only)", type: 'boolean' },
+              W: { title: "Environmental (US only)", type: 'boolean' },
+              Z: { title: "No message on hand", type: 'boolean' }
+            }
+          }
+        }
+      }
+    }
     }
   } 
 
@@ -161,32 +197,27 @@ module.exports = function(app, options) {
   */
 
   // app.debug('schema: ' + JSON.stringify(schema))
-    var stationsObj =  {
-	    type: 'string',
-	    title: 'Station',
-	    enum: [],
-	    enumNames: [],
-	    default: 'ALL'
-    }
-    var stationsEnum = ['ALL']
-    var stationsEnumNames = ['All']
+    var mkObj = function() {
+      return { type: 'string', title: 'Station', enum: [], enumNames: [], default: 'ALL' };
+    };
+    var obj518 = mkObj(), enum518 = ['ALL'], names518 = ['All 518 kHz'];
+    var obj490 = mkObj(), enum490 = ['ALL'], names490 = ['All 490 kHz'];
     Object.keys(stationList).forEach(key => {
-      var station = "NavArea " + stationList[key]['NAVAREA'] + " - " + stationList[key]['Broadcast frequency (kHz)'] + "kHz - " + stationList[key]['NAVTEX CRS name'] + " (" + stationList[key]['Country'] + " / " + stationList[key]['Broadcast language'] + ")"
-      var stationId = stationList[key]['NAVAREA']  + "-" + stationList[key]['Broadcast frequency (kHz)'] + "-" + stationList[key]['NAVTEX CRS identifier']
-      if (stationsEnum.includes(stationId)) {
-        stationId += "2"
+      var s = stationList[key];
+      var freq = s['Broadcast frequency (kHz)'];
+      var label = "NavArea " + s['NAVAREA'] + " - " + freq + "kHz - " + s['NAVTEX CRS name'] + " (" + s['Country'] + " / " + s['Broadcast language'] + ")";
+      var id = s['NAVAREA'] + "-" + freq + "-" + s['NAVTEX CRS identifier'];
+      if (freq === 518) {
+        if (!enum518.includes(id)) { enum518.push(id); names518.push(label); }
+      } else if (freq === 490) {
+        if (!enum490.includes(id)) { enum490.push(id); names490.push(label); }
       }
-      stationsEnum.push(stationId)
-      stationsEnumNames.push(station)
     });
-    stationsObj.enum = stationsEnum;
-    stationsObj.enumNames = stationsEnumNames;
-    schema.properties.stations.items.properties.station = stationsObj;
-    // app.debug(JSON.stringify(stationsObj))
-
+    obj518.enum = enum518; obj518.enumNames = names518;
+    obj490.enum = enum490; obj490.enumNames = names490;
+    schema.properties.stations.items.properties.station = obj518;
+    schema.properties.stations490.items.properties.station = obj490;
     app.debug('schema: %j', schema);
-
-    // schema.properties.stations = obj;
   }
 
   updateSchema();
@@ -347,6 +378,7 @@ module.exports = function(app, options) {
 			      message.stationId = line.slice(offset, offset+1);
 			      message.msgtype = line.slice(offset+1, offset+2);
 			      message.msgtypenr = line.slice(offset+2);
+			      message.freq = '518';
 			      nextline = 'text';
 			      break;
 
@@ -357,6 +389,8 @@ module.exports = function(app, options) {
 			      message.stationId = line.slice(0, 1);
 			      message.msgtype = line.slice(1, 2);
 			      message.msgtypenr = line.slice(2, 4);
+			      var freqMatch = line.match(/(\d+)\s+kHz/);
+			      message.freq = freqMatch ? freqMatch[1] : '518';
 			      nextline = 'text';
 			      break;
 
@@ -436,12 +470,15 @@ module.exports = function(app, options) {
 			}
 
 			function sendDelta(message) {
-        pushDelta(app,
-          "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr,
-          { 
-            "epoch": message.epoch,
-            "text": message.text
-          })
+        var freq = message.freq || '518';
+        var navPath = freq === '490'
+          ? "resources.navtex.490." + message.stationId + "." + message.msgtype + "." + message.msgtypenr
+          : "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr;
+        pushDelta(app, navPath, {
+          "epoch": message.epoch,
+          "text": message.text,
+          "freq": freq
+        })
 			}
 
     }
@@ -496,26 +533,28 @@ module.exports = function(app, options) {
     }
 
     function stationsEnabled() {
-      if (!pluginOptions || !pluginOptions.stations) return [];
-      app.debug(JSON.stringify(pluginOptions.stations));
+      if (!pluginOptions) return [];
       var stations = [];
-      for (const [id, stationObj] of Object.entries(pluginOptions.stations)) {
-        app.debug('stationsEnabled: %j', stationObj)
-        if (stationObj.station == 'ALL') {
-          stations.push("*.*.*")
-        } else {
-          var sId = stationObj['station'].split('-')[2]
-          for (const [key, value] of Object.entries(stationObj.messageTypes)) {
-            if (value == true) {
-              if (key == '0') {
-                stations.push(sId + ".*.*")
-              } else {
-                stations.push(sId + "." + key + ".*")
+      function addPatterns(list, prefix) {
+        if (!list || !list.length) return;
+        for (const stationObj of Object.values(list)) {
+          if (stationObj.station == 'ALL') {
+            stations.push(prefix + "*.*.*");
+          } else {
+            var sId = stationObj['station'].split('-')[2];
+            for (const [key, value] of Object.entries(stationObj.messageTypes || {})) {
+              if (value == true) {
+                stations.push(key == '0'
+                  ? prefix + sId + ".*.*"
+                  : prefix + sId + "." + key + ".*");
               }
             }
           }
         }
       }
+      addPatterns(pluginOptions.stations,    "");       // 518 kHz – no prefix
+      addPatterns(pluginOptions.stations490, "490.");   // 490 kHz – 490. prefix
+      app.debug('stationsEnabled: %j', stations);
       return stations;
     }
 

@@ -3,6 +3,9 @@
 This plugin allows you to view NavTex messages in a browser, e.g. from your phone/ipad and/or from a B&G/Navico MFD when using [this plugin](https://www.npmjs.com/package/signalk-mfd-plugin).
 The plugin expects a NavTex feed on a serial port, which can be configured in the plugin config.
 
+Install by running: C:\signalk\signalkhome\.signalk\node_modules> ..\..\nodejs\.\npm.cmd install --ignore-scripts pa1pdr/signalk-navtex-plugin
+
+
 ## NavTex support
 
 ### ZCZC
