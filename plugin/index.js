@@ -197,6 +197,8 @@ module.exports = function(app, options) {
   }
 
     var tty = null;
+    var footerTimeout = null;
+    var FOOTER_TIMEOUT_MS = 10000; // 10 s silence = end of message (ICS NAV6 gap is ~4 s)
     plugin.start = function(options, restartPlugin) {
       var text = [];
       app.debug('starting plugin')
@@ -377,6 +379,11 @@ module.exports = function(app, options) {
 
 			    case 'text':
 			      text.push(line);
+			      clearTimeout(footerTimeout);
+			      footerTimeout = setTimeout(function() {
+			        app.debug('footer: inactivity timeout');
+			        processFooter();
+			      }, FOOTER_TIMEOUT_MS);
 			      break;
 
 			    case 'footer':
@@ -386,6 +393,8 @@ module.exports = function(app, options) {
 			};
 			
 			function processFooter () {
+			  clearTimeout(footerTimeout);
+			  footerTimeout = null;
 			  while (text[text.length - 1] == '') {
 			    text.pop();
 			  }
