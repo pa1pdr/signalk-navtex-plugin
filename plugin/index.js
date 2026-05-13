@@ -140,8 +140,7 @@ module.exports = function(app, options) {
 			      }
 			    }
 			  }
-      }
-    },
+      },
     stations490: {
       type: 'array',
       title: '490 kHz (local) - stations and message types',
