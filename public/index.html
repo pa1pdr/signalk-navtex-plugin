@@ -190,7 +190,7 @@ const addContenttoDom = newMessage => {
   newMessageEl.innerHTML = '<div id="close"><a href="#" onclick="slideUp(' + epoch + '); $(this).parent().hide(); return false;"><img src ="x_big.png"/></a></div>';
   newMessageEl.setAttribute("epoch", epoch);
   newMessageEl.setAttribute("id","message");
-  newMessageEl.setAttribute("class", "type_" + messageType.toUpperCase() + " " + dayNight);
+  newMessageEl.setAttribute("class", "type_" + messageType.toUpperCase() + (freqVal === '490' ? ' freq_490' : '') + " " + dayNight);
   const newHeaderEl = document.createElement("header");
   newHeaderEl.setAttribute("id","header");
   var stationKey = freqVal + ':' + stationId;
