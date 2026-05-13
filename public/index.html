@@ -169,7 +169,12 @@ const addContenttoDom = newMessage => {
   const obj = JSON.parse(newMessage);
   const message = obj.updates[0].values[0];
   var parts = message.path.split('.');
-  var stationId = parts[2], messageType = parts[3], messageNr = parts[4];
+  var stationId, messageType, messageNr;
+  if (parts[2] === '490') {
+    stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
+  } else {
+    stationId = parts[2]; messageType = parts[3]; messageNr = parts[4];
+  }
   var freq = (message.value.freq || '518') + '&nbsp;kHz';
   const epoch = message.value.epoch;
   if (messages.includes(epoch)) {

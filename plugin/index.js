@@ -470,7 +470,9 @@ module.exports = function(app, options) {
 
 			function sendDelta(message) {
         var freq = message.freq || '518';
-        var navPath = "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr;
+        var navPath = freq === '490'
+          ? "resources.navtex.490." + message.stationId + "." + message.msgtype + "." + message.msgtypenr
+          : "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr;
         pushDelta(app, navPath, {
           "epoch": message.epoch,
           "text": message.text,
@@ -549,8 +551,8 @@ module.exports = function(app, options) {
           }
         }
       }
-      addPatterns(pluginOptions.stations,    "");  // 518 kHz
-      addPatterns(pluginOptions.stations490, "");  // 490 kHz – different station letters, same path format
+      addPatterns(pluginOptions.stations,    "");       // 518 kHz – no prefix
+      addPatterns(pluginOptions.stations490, "490.");   // 490 kHz – 490. prefix
       app.debug('stationsEnabled: %j', stations);
       return stations;
     }
