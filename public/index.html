@@ -53,6 +53,7 @@ if (mfd_model_detail != null) {
 }
 
 var messages=[];
+var stationNames={};
 var connected=false;
 var instantReconnect = false;
 var ws;
@@ -129,6 +130,10 @@ function connect () {
 
 // setInterval(setListeningStations(), 5000);
 
+$.getJSON("/plugins/signalk-navtex-plugin/stationlist", function(data) {
+  stationNames = data;
+});
+
 connect();
 
 function slideUp(epoch) {
@@ -182,7 +187,8 @@ const addContenttoDom = newMessage => {
   newMessageEl.setAttribute("class", "type_" + messageType.toUpperCase() + " " + dayNight);
   const newHeaderEl = document.createElement("header");
   newHeaderEl.setAttribute("id","header");
-  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;');
+  var stationLabel = stationNames[stationId] ? stationNames[stationId].replaceAll(' ', '&nbsp;') : stationId;
+  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;') + " issued&nbsp;by " + stationLabel;
   newMessageEl.appendChild(newHeaderEl);
   const newTextEl = document.createElement("text");
   newTextEl.setAttribute("id","text");

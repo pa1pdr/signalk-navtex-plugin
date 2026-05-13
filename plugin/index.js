@@ -481,6 +481,15 @@ module.exports = function(app, options) {
         res.contentType("application/json")
         res.send(JSON.stringify(stationsEnabled()))
       })
+      router.get("/stationlist", (req, res) => {
+        var map = {};
+        Object.values(stationList).forEach(s => {
+          var id = s['NAVTEX CRS identifier'];
+          if (!map[id]) map[id] = s['NAVTEX CRS name'] + ' (' + s['Country'] + ')';
+        });
+        res.contentType("application/json")
+        res.send(JSON.stringify(map))
+      })
       router.get("/back", (req, res) => {
         res.redirect('back')
       })
