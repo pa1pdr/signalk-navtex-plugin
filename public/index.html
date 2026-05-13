@@ -182,7 +182,7 @@ const addContenttoDom = newMessage => {
   newMessageEl.setAttribute("class", "type_" + messageType.toUpperCase() + " " + dayNight);
   const newHeaderEl = document.createElement("header");
   newHeaderEl.setAttribute("id","header");
-  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + messageTypes[messageType].replace(' ', '&nbsp;');
+  newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;');
   newMessageEl.appendChild(newHeaderEl);
   const newTextEl = document.createElement("text");
   newTextEl.setAttribute("id","text");

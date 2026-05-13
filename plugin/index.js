@@ -469,16 +469,15 @@ module.exports = function(app, options) {
         for (const [id, stationObj] of Object.entries(options.stations)) {
           app.debug('stationsEnabled: %j', stationObj)
           if (stationObj.station == 'ALL') {
-            stations.push("*.*")
+            stations.push("*.*.*")
           } else {
             var sId = stationObj['station'].split('-')[2]
-            stationObj.messageTypes
             for (const [key, value] of Object.entries(stationObj.messageTypes)) {
               if (value == true) {
                 if (key == '0') {
-                  stations.push(sId + ".*")
+                  stations.push(sId + ".*.*")
                 } else {
-                  stations.push(sId + "." + key)
+                  stations.push(sId + "." + key + ".*")
                 }
               }
             }
