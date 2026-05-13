@@ -476,6 +476,11 @@ module.exports = function(app, options) {
 		      if (value != null) {
 		        if ((now - value['epoch']) > (options.expire * 1000 * 60 * 60)) {
 		          app.debug('Removing msgid ' + value['id']);
+		          var freq = value.freq || '518';
+		          var navPath = freq === '490'
+		            ? "resources.navtex.490." + value.stationId + "." + value.msgtype + "." + value.msgtypenr
+		            : "resources.navtex." + value.stationId + "." + value.msgtype + "." + value.msgtypenr;
+		          pushDelta(app, navPath, null);
 		        } else {
 		          value['id'] = count;
 		          messages_tmp.push(value);
