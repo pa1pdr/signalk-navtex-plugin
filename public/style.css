@@ -53,7 +53,7 @@ body {
 
 /* 490 kHz messages are slightly lighter than 518 kHz */
 .freq_490 {
-  filter: brightness(1.5);
+  filter: brightness(0.7);
 }
 
 /* red */
