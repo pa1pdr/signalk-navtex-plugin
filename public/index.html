@@ -169,12 +169,8 @@ const addContenttoDom = newMessage => {
   const obj = JSON.parse(newMessage);
   const message = obj.updates[0].values[0];
   var parts = message.path.split('.');
-  var freq, stationId, messageType, messageNr;
-  if (parts[2] === '490') {
-    freq = '490&nbsp;kHz'; stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
-  } else {
-    freq = '518&nbsp;kHz'; stationId = parts[2]; messageType = parts[3]; messageNr = parts[4];
-  }
+  var stationId = parts[2], messageType = parts[3], messageNr = parts[4];
+  var freq = (message.value.freq || '518') + '&nbsp;kHz';
   const epoch = message.value.epoch;
   if (messages.includes(epoch)) {
     // console.log('Ignore duplicate ' + epoch)
