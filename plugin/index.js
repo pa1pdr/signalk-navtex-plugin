@@ -61,6 +61,29 @@ module.exports = function(app, options) {
         title: "Use message store in NASA NavTex",
         default: false
       },
+      navarea: {
+        type: 'string',
+        title: 'Your NAVAREA (save first, then select stations below)',
+        enum: ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'],
+        enumNames: [
+          'I — North Atlantic East',
+          'II — North Atlantic Northeast',
+          'III — Mediterranean',
+          'IV — North Atlantic West',
+          'V — South Atlantic East',
+          'VI — South Atlantic West',
+          'VII — South Africa',
+          'VIII — Indian Ocean',
+          'IX — Persian Gulf',
+          'X — Australia / Pacific',
+          'XI — Pacific / Asia',
+          'XII — US West Coast / Pacific',
+          'XIII — Russia Pacific',
+          'XIV — New Zealand / Pacific',
+          'XV — Chile',
+          'XVI — Peru'
+        ]
+      },
 	    stations: {
 	      type: 'array',
 	      title: '518 kHz (international) - stations and message types',
@@ -201,8 +224,10 @@ module.exports = function(app, options) {
     };
     var obj518 = mkObj(), enum518 = ['ALL'], names518 = ['All 518 kHz'];
     var obj490 = mkObj(), enum490 = ['ALL'], names490 = ['All 490 kHz'];
+    var filterNA = pluginOptions && pluginOptions.navarea;
     Object.keys(stationList).forEach(key => {
       var s = stationList[key];
+      if (filterNA && s['NAVAREA'] !== filterNA) return;
       var freq = s['Broadcast frequency (kHz)'];
       var label = "NavArea " + s['NAVAREA'] + " - " + freq + "kHz - " + s['NAVTEX CRS name'] + " (" + s['Country'] + " / " + s['Broadcast language'] + ")";
       var id = s['NAVAREA'] + "-" + freq + "-" + s['NAVTEX CRS identifier'];
@@ -470,9 +495,14 @@ module.exports = function(app, options) {
 
 			function sendDelta(message) {
         var freq = message.freq || '518';
-        var navPath = freq === '490'
-          ? "resources.navtex.490." + message.stationId + "." + message.msgtype + "." + message.msgtypenr
-          : "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr;
+        var na = pluginOptions && pluginOptions.navarea;
+        var navPath = na
+          ? (freq === '490'
+            ? "resources.navtex.490." + na + "." + message.stationId + "." + message.msgtype + "." + message.msgtypenr
+            : "resources.navtex." + na + "." + message.stationId + "." + message.msgtype + "." + message.msgtypenr)
+          : (freq === '490'
+            ? "resources.navtex.490." + message.stationId + "." + message.msgtype + "." + message.msgtypenr
+            : "resources.navtex." + message.stationId + "." + message.msgtype + "." + message.msgtypenr);
         pushDelta(app, navPath, {
           "epoch": message.epoch,
           "text": message.text,
@@ -522,8 +552,9 @@ module.exports = function(app, options) {
         Object.values(stationList).forEach(s => {
           var freq = s['Broadcast frequency (kHz)'];
           var id = s['NAVTEX CRS identifier'];
+          var navarea = s['NAVAREA'];
           if (freq === 518 || freq === 490) {
-            var key = freq + ':' + id;
+            var key = freq + ':' + navarea + ':' + id;
             if (!map[key]) map[key] = s['NAVTEX CRS name'] + ' (' + s['Country'] + ')';
           }
         });
@@ -538,25 +569,29 @@ module.exports = function(app, options) {
     function stationsEnabled() {
       if (!pluginOptions) return [];
       var stations = [];
-      function addPatterns(list, prefix) {
+      var configNA = pluginOptions.navarea || null;
+      function addPatterns(list, freqPrefix) {
         if (!list || !list.length) return;
         for (const stationObj of Object.values(list)) {
           if (stationObj.station == 'ALL') {
-            stations.push(prefix + "*.*.*");
+            var na = configNA ? configNA + "." : "";
+            stations.push(freqPrefix + na + "*.*.*");
           } else {
-            var sId = stationObj['station'].split('-')[2];
+            var parts = stationObj['station'].split('-');
+            var sNavArea = configNA ? parts[0] + '.' : '';
+            var sId = parts[2];
             for (const [key, value] of Object.entries(stationObj.messageTypes || {})) {
               if (value == true) {
                 stations.push(key == '0'
-                  ? prefix + sId + ".*.*"
-                  : prefix + sId + "." + key + ".*");
+                  ? freqPrefix + sNavArea + sId + ".*.*"
+                  : freqPrefix + sNavArea + sId + "." + key + ".*");
               }
             }
           }
         }
       }
-      addPatterns(pluginOptions.stations,    "");       // 518 kHz – no prefix
-      addPatterns(pluginOptions.stations490, "490.");   // 490 kHz – 490. prefix
+      addPatterns(pluginOptions.stations,    "");       // 518 kHz
+      addPatterns(pluginOptions.stations490, "490.");   // 490 kHz
       app.debug('stationsEnabled: %j', stations);
       return stations;
     }

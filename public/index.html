@@ -169,11 +169,19 @@ const addContenttoDom = newMessage => {
   const obj = JSON.parse(newMessage);
   const message = obj.updates[0].values[0];
   var parts = message.path.split('.');
-  var stationId, messageType, messageNr;
+  var navArea, stationId, messageType, messageNr;
   if (parts[2] === '490') {
-    stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
+    if (parts.length === 7) {
+      navArea = parts[3]; stationId = parts[4]; messageType = parts[5]; messageNr = parts[6];
+    } else {
+      navArea = null;     stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
+    }
   } else {
-    stationId = parts[2]; messageType = parts[3]; messageNr = parts[4];
+    if (parts.length === 6) {
+      navArea = parts[2]; stationId = parts[3]; messageType = parts[4]; messageNr = parts[5];
+    } else {
+      navArea = null;     stationId = parts[2]; messageType = parts[3]; messageNr = parts[4];
+    }
   }
   var freqVal = message.value.freq || '518';
   var freq = freqVal + '&nbsp;kHz';
@@ -193,7 +201,7 @@ const addContenttoDom = newMessage => {
   newMessageEl.setAttribute("class", "type_" + messageType.toUpperCase() + " " + dayNight);
   const newHeaderEl = document.createElement("header");
   newHeaderEl.setAttribute("id","header");
-  var stationKey = freqVal + ':' + stationId;
+  var stationKey = navArea ? (freqVal + ':' + navArea + ':' + stationId) : (freqVal + ':' + stationId);
   var stationLabel = stationNames[stationKey] ? stationNames[stationKey].replaceAll(' ', '&nbsp;') : stationId;
   newHeaderEl.innerHTML= datetime + "  #" + messageNr + " " + freq + " " + messageTypes[messageType].replaceAll(' ', '&nbsp;') + " issued&nbsp;by " + stationLabel;
   newMessageEl.appendChild(newHeaderEl);
