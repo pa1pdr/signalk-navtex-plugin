@@ -294,6 +294,7 @@ module.exports = function(app, options) {
 		  if (fs.existsSync(messagesCacheFile)) {
 		    app.debug('Found cache file. Reading...');
 		    messages  = JSON.parse(fs.readFileSync(messagesCacheFile, 'utf8'));
+		    removeOld();
 		    var count = 0;
 		    for (const [key, value] of Object.entries(messages)) {
 		      // app.debug('key: ' + key + ' received: ' + value.datetime);
@@ -309,7 +310,6 @@ module.exports = function(app, options) {
 
         
 		    app.debug('Read ' + count + ' messages from cache. Msgid now ' + msgid);
-		    removeOld();
 		  } else {
 		    app.debug('No cache file found');
 		  }
