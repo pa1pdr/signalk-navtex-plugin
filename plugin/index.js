@@ -196,10 +196,18 @@ module.exports = function(app, options) {
     return schema
   }
 
+    var pluginOptions = null;
+    var removeOldInterval = null;
     var tty = null;
     var footerTimeout = null;
     var FOOTER_TIMEOUT_MS = 10000; // 10 s silence = end of message (ICS NAV6 gap is ~4 s)
     plugin.start = function(options, restartPlugin) {
+      pluginOptions = options;
+      message = {};
+      nextline = '';
+      clearInterval(removeOldInterval);
+      clearTimeout(footerTimeout);
+      footerTimeout = null;
       var text = [];
       app.debug('starting plugin')
       const messagesCacheFile = path.join(app.getDataDirPath(), 'messagesCacheFile.json')
@@ -212,31 +220,6 @@ module.exports = function(app, options) {
         }]
       };
     
-      plugin.registerWithRouter = function(router) {
-	      // Will appear here; plugins/signalk-navtex-plugin/
-	      app.debug("registerWithRouter")
-	      router.get("/messages", (req, res) => {
-	        res.contentType("application/json")
-	        res.send(JSON.stringify(NavTexMessages))
-	      })
-	      router.get("/schema", (req, res) => {
-	        res.contentType("application/json")
-	        res.send(JSON.stringify(schema))
-	      })
-	      router.get("/options", (req, res) => {
-	        res.contentType("application/json")
-	        res.send(JSON.stringify(options))
-	      })
-	      router.get("/stations", (req, res) => {
-	        res.contentType("application/json")
-	        res.send(JSON.stringify(stationsEnabled()))
-	      })
-	      router.get("/back", (req, res) =>{
-	        app.debug("back")
-	        res.redirect('back')
-	      })
-	    }
-
       app.subscriptionmanager.subscribe(
         localSubscription,
         unsubscribes,
@@ -309,7 +292,7 @@ module.exports = function(app, options) {
       }, 500);
 
       // Remove old entries every hour
-      setInterval(removeOld, 60*60*1000); // every hour remove older messages
+      removeOldInterval = setInterval(removeOld, 60*60*1000);
 
 			function pushDelta(app, path, value) {
         // app.debug("sendDelta: " + path + ": " + JSON.stringify(value))
@@ -461,37 +444,15 @@ module.exports = function(app, options) {
           })
 			}
 
-      function stationsEnabled () {
-        /*
-        */
-        app.debug(JSON.stringify(options.stations));
-        var stations = [];
-        for (const [id, stationObj] of Object.entries(options.stations)) {
-          app.debug('stationsEnabled: %j', stationObj)
-          if (stationObj.station == 'ALL') {
-            stations.push("*.*.*")
-          } else {
-            var sId = stationObj['station'].split('-')[2]
-            for (const [key, value] of Object.entries(stationObj.messageTypes)) {
-              if (value == true) {
-                if (key == '0') {
-                  stations.push(sId + ".*.*")
-                } else {
-                  stations.push(sId + "." + key + ".*")
-                }
-              }
-            }
-          }
-        }
-        return stations;
-      }
-
     }
 
 
     plugin.stop = function() {
       app.debug("Stopping")
       unsubscribes.forEach(f => f())
+      clearInterval(removeOldInterval);
+      clearTimeout(footerTimeout);
+      footerTimeout = null;
       if (tty && tty.isOpen) {
         tty.close(function(err) {
           if (err) app.debug('Error closing port: ' + err.message)
@@ -500,6 +461,53 @@ module.exports = function(app, options) {
       }
       tty = null
       app.debug("Stopped")
+    }
+
+    plugin.registerWithRouter = function(router) {
+      app.debug("registerWithRouter")
+      router.get("/messages", (req, res) => {
+        res.contentType("application/json")
+        res.send(JSON.stringify(NavTexMessages))
+      })
+      router.get("/schema", (req, res) => {
+        res.contentType("application/json")
+        res.send(JSON.stringify(schema))
+      })
+      router.get("/options", (req, res) => {
+        res.contentType("application/json")
+        res.send(JSON.stringify(pluginOptions))
+      })
+      router.get("/stations", (req, res) => {
+        res.contentType("application/json")
+        res.send(JSON.stringify(stationsEnabled()))
+      })
+      router.get("/back", (req, res) => {
+        res.redirect('back')
+      })
+    }
+
+    function stationsEnabled() {
+      if (!pluginOptions || !pluginOptions.stations) return [];
+      app.debug(JSON.stringify(pluginOptions.stations));
+      var stations = [];
+      for (const [id, stationObj] of Object.entries(pluginOptions.stations)) {
+        app.debug('stationsEnabled: %j', stationObj)
+        if (stationObj.station == 'ALL') {
+          stations.push("*.*.*")
+        } else {
+          var sId = stationObj['station'].split('-')[2]
+          for (const [key, value] of Object.entries(stationObj.messageTypes)) {
+            if (value == true) {
+              if (key == '0') {
+                stations.push(sId + ".*.*")
+              } else {
+                stations.push(sId + "." + key + ".*")
+              }
+            }
+          }
+        }
+      }
+      return stations;
     }
 
   return plugin;
