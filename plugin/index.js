@@ -369,24 +369,15 @@ module.exports = function(app, options) {
 			function processLine(line) {
 			  // Standard ZCZC format: "ZCZC B03" or NASA NavTex ">" prefix
 			  if (line.match(/^ZCZC/i) || line.match(/^>/i)) {
-			    if (nextline == 'text') {
-			      app.debug('Missed footer apparently');
-			      processFooter();
-			    }
+			    processFooter();
 			    nextline = 'header';
 			  // ICS NAV6: session header e.g. "NAVTEX ==== 14/07/2025 10:30 UTC"
 			  } else if (line.match(/^NAVTEX\s*={3,}/i)) {
-			    if (nextline == 'text') {
-			      app.debug('Session boundary - closing message');
-			      processFooter();
-			    }
+			    processFooter();
 			    nextline = '';
 			  // ICS NAV6: message header e.g. "PB02 518 kHz Netherlands Cg 0%" (X=stationId, Y=msgtype, NN=seq)
-			  } else if (line.match(/^[A-Z]{2}\d{2}(\s|$)/)) {
-			    if (nextline == 'text') {
-			      app.debug('New XYNN header - closing previous message');
-			      processFooter();
-			    }
+			  } else if (line.match(/^[A-Z]{2}\d{2}\s+(518|490)\s+kHz/i)) {
+			    processFooter();
 			    nextline = 'xynn';
 			  // Standard NNNN footer or NASA NavTex "<" suffix
 			  } else if (line.match(/^NNNN/i) || line.match(/^</i)) {
@@ -441,6 +432,12 @@ module.exports = function(app, options) {
 			  }
 			  if (typeof message.id !== 'undefined') {
 			    message.text = text;
+			    var mFreq = message.freq || '518';
+			    messages = messages.filter(function(m) {
+			      if (!m) return false;
+			      var mf = m.freq || '518';
+			      return !(mf === mFreq && m.stationId === message.stationId && m.msgtype === message.msgtype && m.msgtypenr === message.msgtypenr);
+			    });
 			    messages.push(message);
 			    sendDelta(message)
 			    app.debug('footer: Added message id ' + msgid);
